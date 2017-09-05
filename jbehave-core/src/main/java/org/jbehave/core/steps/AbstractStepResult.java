@@ -1,13 +1,15 @@
 package org.jbehave.core.steps;
 
-import java.lang.reflect.Method;
-
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.jbehave.core.failures.PendingStepFound;
 import org.jbehave.core.failures.UUIDExceptionWrapper;
 import org.jbehave.core.model.OutcomesTable.OutcomesFailed;
 import org.jbehave.core.reporters.StoryReporter;
+
+import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * Represents the possible step results:
@@ -132,6 +134,7 @@ public abstract class AbstractStepResult implements StepResult {
     private long durationInMillis;
     private long start;
     private long end;
+    protected List<String> messages;
 
     public AbstractStepResult(Type type, String step) {
         this(step, type, null);
@@ -162,10 +165,17 @@ public abstract class AbstractStepResult implements StepResult {
         this.durationInMillis = timer.getDuration();
         return this;
     }
+
+    public StepResult setMessages(List<String> messages) {
+        this.messages = (null == messages || messages.isEmpty()) ? Lists.<String>newArrayList() : messages;
+        return this;
+    }
     
     public UUIDExceptionWrapper getFailure() {
         return throwable;
     }
+
+    public List<String> getMessages() { return this.messages; }
 
     @Override
     public String toString() {

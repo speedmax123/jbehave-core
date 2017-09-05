@@ -1,5 +1,26 @@
 package org.jbehave.core.steps;
 
+import com.thoughtworks.paranamer.NullParanamer;
+import com.thoughtworks.paranamer.Paranamer;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+import org.jbehave.core.annotations.AfterScenario.Outcome;
+import org.jbehave.core.annotations.AsParameters;
+import org.jbehave.core.annotations.FromContext;
+import org.jbehave.core.annotations.Named;
+import org.jbehave.core.annotations.ToContext;
+import org.jbehave.core.configuration.Keywords;
+import org.jbehave.core.failures.BeforeOrAfterFailed;
+import org.jbehave.core.failures.IgnoringStepsFailure;
+import org.jbehave.core.failures.RestartingScenarioFailure;
+import org.jbehave.core.failures.UUIDExceptionWrapper;
+import org.jbehave.core.log.LoggerFactory;
+import org.jbehave.core.model.ExamplesTable;
+import org.jbehave.core.model.Meta;
+import org.jbehave.core.parsers.StepMatcher;
+import org.jbehave.core.reporters.StoryReporter;
+import org.jbehave.core.steps.context.StepsContext;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -10,36 +31,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.apache.commons.lang3.builder.ToStringStyle;
-import org.jbehave.core.annotations.AfterScenario.Outcome;
-import org.jbehave.core.annotations.AsParameters;
-import org.jbehave.core.annotations.ToContext;
-import org.jbehave.core.annotations.FromContext;
-import org.jbehave.core.annotations.Named;
-import org.jbehave.core.configuration.Keywords;
-import org.jbehave.core.failures.BeforeOrAfterFailed;
-import org.jbehave.core.failures.IgnoringStepsFailure;
-import org.jbehave.core.failures.RestartingScenarioFailure;
-import org.jbehave.core.failures.UUIDExceptionWrapper;
-import org.jbehave.core.model.ExamplesTable;
-import org.jbehave.core.model.Meta;
-import org.jbehave.core.parsers.StepMatcher;
-import org.jbehave.core.reporters.StoryReporter;
-
-import com.thoughtworks.paranamer.NullParanamer;
-import com.thoughtworks.paranamer.Paranamer;
-import org.jbehave.core.steps.context.StepsContext;
-
 import static java.util.Arrays.asList;
-import static org.jbehave.core.steps.AbstractStepResult.comment;
-import static org.jbehave.core.steps.AbstractStepResult.failed;
-import static org.jbehave.core.steps.AbstractStepResult.ignorable;
-import static org.jbehave.core.steps.AbstractStepResult.notPerformed;
-import static org.jbehave.core.steps.AbstractStepResult.pending;
-import static org.jbehave.core.steps.AbstractStepResult.silent;
-import static org.jbehave.core.steps.AbstractStepResult.skipped;
-import static org.jbehave.core.steps.AbstractStepResult.successful;
+import static org.jbehave.core.steps.AbstractStepResult.*;
 
 public class StepCreator {
 
@@ -726,6 +719,7 @@ public class StepCreator {
 
         public StepResult perform(UUIDExceptionWrapper storyFailureIfItHappened) {
             Timer timer = new Timer().start();
+            LoggerFactory.getLogger().clearMessages();
             try {
                 parametriseStep();
                 stepMonitor.performing(parametrisedStep, dryRun);
@@ -734,10 +728,10 @@ public class StepCreator {
                     storeOutput(outputObject, method);
                 }
                 return successful(stepAsString).withParameterValues(parametrisedStep)
-                        .setTimings(timer.stop());
+                        .setTimings(timer.stop()).setMessages(LoggerFactory.getLogger().getPendingMessages());
             } catch (ParameterNotFound e) {
                 // step parametrisation failed, return pending StepResult
-                return pending(stepAsString).withParameterValues(parametrisedStep);
+                return pending(stepAsString).withParameterValues(parametrisedStep).setMessages(LoggerFactory.getLogger().getPendingMessages());
             } catch (InvocationTargetException e) {
                 if (e.getCause() instanceof RestartingScenarioFailure) {
                     throw (RestartingScenarioFailure) e.getCause();
@@ -750,10 +744,12 @@ public class StepCreator {
                     failureCause = failureCause.getCause();
                 }
                 return failed(stepAsString, new UUIDExceptionWrapper(stepAsString, failureCause)).withParameterValues(
-                        parametrisedStep).setTimings(timer.stop());
+                        parametrisedStep).setTimings(timer.stop()).setMessages(LoggerFactory.getLogger().getPendingMessages());
             } catch (Throwable t) {
                 return failed(stepAsString, new UUIDExceptionWrapper(stepAsString, t)).withParameterValues(
-                        parametrisedStep).setTimings(timer.stop());
+                        parametrisedStep).setTimings(timer.stop()).setMessages(LoggerFactory.getLogger().getPendingMessages());
+            } finally {
+                LoggerFactory.getLogger().clearMessages();
             }
         }
 

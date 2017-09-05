@@ -3,6 +3,8 @@ package org.jbehave.core.steps;
 import org.jbehave.core.failures.UUIDExceptionWrapper;
 import org.jbehave.core.reporters.StoryReporter;
 
+import java.util.List;
+
 public interface StepResult {
 
     enum Type {
@@ -21,6 +23,8 @@ public interface StepResult {
     StepResult withParameterValues(String parametrisedStep);
 
     StepResult setTimings(Timer timer);
+
+    StepResult setMessages(List<String> messages);
 
     void describeTo(StoryReporter reporter);
 
