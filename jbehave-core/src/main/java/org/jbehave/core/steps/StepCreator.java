@@ -14,7 +14,6 @@ import org.jbehave.core.failures.BeforeOrAfterFailed;
 import org.jbehave.core.failures.IgnoringStepsFailure;
 import org.jbehave.core.failures.RestartingScenarioFailure;
 import org.jbehave.core.failures.UUIDExceptionWrapper;
-import org.jbehave.core.log.LoggerFactory;
 import org.jbehave.core.model.ExamplesTable;
 import org.jbehave.core.model.Meta;
 import org.jbehave.core.parsers.StepMatcher;
@@ -33,6 +32,8 @@ import java.util.regex.Pattern;
 
 import static java.util.Arrays.asList;
 import static org.jbehave.core.steps.AbstractStepResult.*;
+
+import static com.ebay.horizon.logging.LoggerFactory.*;
 
 public class StepCreator {
 
@@ -719,7 +720,7 @@ public class StepCreator {
 
         public StepResult perform(UUIDExceptionWrapper storyFailureIfItHappened) {
             Timer timer = new Timer().start();
-            LoggerFactory.getLogger().clearMessages();
+            logger().clearMessages();
             try {
                 parametriseStep();
                 stepMonitor.performing(parametrisedStep, dryRun);
@@ -728,10 +729,10 @@ public class StepCreator {
                     storeOutput(outputObject, method);
                 }
                 return successful(stepAsString).withParameterValues(parametrisedStep)
-                        .setTimings(timer.stop()).setMessages(LoggerFactory.getLogger().getPendingMessages());
+                        .setTimings(timer.stop()).setMessages(logger().getPendingMessages());
             } catch (ParameterNotFound e) {
                 // step parametrisation failed, return pending StepResult
-                return pending(stepAsString).withParameterValues(parametrisedStep).setMessages(LoggerFactory.getLogger().getPendingMessages());
+                return pending(stepAsString).withParameterValues(parametrisedStep).setMessages(logger().getPendingMessages());
             } catch (InvocationTargetException e) {
                 if (e.getCause() instanceof RestartingScenarioFailure) {
                     throw (RestartingScenarioFailure) e.getCause();
@@ -744,12 +745,12 @@ public class StepCreator {
                     failureCause = failureCause.getCause();
                 }
                 return failed(stepAsString, new UUIDExceptionWrapper(stepAsString, failureCause)).withParameterValues(
-                        parametrisedStep).setTimings(timer.stop()).setMessages(LoggerFactory.getLogger().getPendingMessages());
+                        parametrisedStep).setTimings(timer.stop()).setMessages(logger().getPendingMessages());
             } catch (Throwable t) {
                 return failed(stepAsString, new UUIDExceptionWrapper(stepAsString, t)).withParameterValues(
-                        parametrisedStep).setTimings(timer.stop()).setMessages(LoggerFactory.getLogger().getPendingMessages());
+                        parametrisedStep).setTimings(timer.stop()).setMessages(logger().getPendingMessages());
             } finally {
-                LoggerFactory.getLogger().clearMessages();
+                logger().clearMessages();
             }
         }
 
