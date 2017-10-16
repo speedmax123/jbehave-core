@@ -1,7 +1,6 @@
 package org.jbehave.examples.core;
 
 import static org.jbehave.core.reporters.Format.CONSOLE;
-import static org.jbehave.core.reporters.Format.HTML;
 import static org.jbehave.core.reporters.Format.TXT;
 import static org.jbehave.core.reporters.Format.XML;
 
@@ -20,7 +19,6 @@ import org.jbehave.core.io.UnderscoredCamelCaseResolver;
 import org.jbehave.core.junit.JUnitStory;
 import org.jbehave.core.model.ExamplesTableFactory;
 import org.jbehave.core.model.TableTransformers;
-import org.jbehave.core.parsers.RegexPrefixCapturingPatternParser;
 import org.jbehave.core.parsers.RegexStoryParser;
 import org.jbehave.core.reporters.CrossReference;
 import org.jbehave.core.reporters.FilePrintStreamFactory.ResolveToPackagedName;
@@ -31,29 +29,9 @@ import org.jbehave.core.steps.ParameterConverters;
 import org.jbehave.core.steps.ParameterConverters.DateConverter;
 import org.jbehave.core.steps.ParameterConverters.ExamplesTableConverter;
 import org.jbehave.examples.core.service.TradingService;
-import org.jbehave.examples.core.steps.AndSteps;
-import org.jbehave.examples.core.steps.BeforeAfterSteps;
-import org.jbehave.examples.core.steps.CalendarSteps;
-import org.jbehave.examples.core.steps.CompositeNestedSteps;
-import org.jbehave.examples.core.steps.CompositeSteps;
-import org.jbehave.examples.core.steps.ContextSteps;
-import org.jbehave.examples.core.steps.ExamplesTableParametersSteps;
-import org.jbehave.examples.core.steps.MetaParametrisationSteps;
-import org.jbehave.examples.core.steps.MyContext;
-import org.jbehave.examples.core.steps.NamedParametersSteps;
-import org.jbehave.examples.core.steps.ParameterDelimitersSteps;
-import org.jbehave.examples.core.steps.ParametrisedSteps;
-import org.jbehave.examples.core.steps.PendingSteps;
-import org.jbehave.examples.core.steps.PriorityMatchingSteps;
-import org.jbehave.examples.core.steps.SandpitSteps;
-import org.jbehave.examples.core.steps.SearchSteps;
-import org.jbehave.examples.core.steps.StepsContextSteps;
-import org.jbehave.examples.core.steps.TraderSteps;
+import org.jbehave.examples.core.steps.*;
 
-import static org.jbehave.core.reporters.Format.CONSOLE;
 import static org.jbehave.core.reporters.Format.HTML_TEMPLATE;
-import static org.jbehave.core.reporters.Format.TXT;
-import static org.jbehave.core.reporters.Format.XML;
 
 /**
  * <p>
@@ -83,13 +61,14 @@ public abstract class CoreStory extends JUnitStory {
         Class<? extends Embeddable> embeddableClass = this.getClass();
         Properties viewResources = new Properties();
         viewResources.put("decorateNonHtml", "true");
+        LoadFromClasspath resourceLoader = new LoadFromClasspath(embeddableClass);
         TableTransformers tableTranformers = new TableTransformers();
         // Start from default ParameterConverters instance
-        ParameterConverters parameterConverters = new ParameterConverters(tableTranformers);
+        ParameterConverters parameterConverters = new ParameterConverters(resourceLoader, tableTranformers);
         // factory to allow parameter conversion and loading from external
         // resources (used by StoryParser too)
-        ExamplesTableFactory examplesTableFactory = new ExamplesTableFactory(new LocalizedKeywords(),
-                new LoadFromClasspath(embeddableClass), parameterConverters, tableTranformers);
+        ExamplesTableFactory examplesTableFactory = new ExamplesTableFactory(new LocalizedKeywords(), resourceLoader,
+                parameterConverters, tableTranformers);
         // add custom converters
         parameterConverters.addConverters(new DateConverter(new SimpleDateFormat("yyyy-MM-dd")),
                 new ExamplesTableConverter(examplesTableFactory));
@@ -97,7 +76,7 @@ public abstract class CoreStory extends JUnitStory {
         return new MostUsefulConfiguration()
                 .useStoryControls(new StoryControls().doDryRun(false).doSkipScenariosAfterFailure(false))
                 //.usePendingStepStrategy(new FailingUponPendingStep())
-                .useStoryLoader(new LoadFromClasspath(embeddableClass))
+                .useStoryLoader(resourceLoader)
                 .useStoryParser(new RegexStoryParser(examplesTableFactory))
                 .useStoryPathResolver(new UnderscoredCamelCaseResolver())
                 .useStoryReporterBuilder(
@@ -107,19 +86,21 @@ public abstract class CoreStory extends JUnitStory {
                                 .withViewResources(viewResources).withFormats(CONSOLE, TXT, HTML_TEMPLATE, XML)
                                 .withCrossReference(xref)
                                 .withFailureTrace(true).withFailureTraceCompression(true))
-                .useParameterConverters(parameterConverters)
-                // use '%' instead of '$' to identify parameters
-                .useStepPatternParser(new RegexPrefixCapturingPatternParser("%"));
+                .useParameterConverters(parameterConverters);
     }
 
     @Override
     public InjectableStepsFactory stepsFactory() {
-    	MyContext context = new MyContext();
-        return new InstanceStepsFactory(configuration(), new TraderSteps(new TradingService()), new AndSteps(),
-                new MetaParametrisationSteps(), new CalendarSteps(), new PriorityMatchingSteps(), new PendingSteps(),
-                new ParametrisedSteps(), new SandpitSteps(), new SearchSteps(), new BeforeAfterSteps(),
-                new CompositeSteps(), new CompositeNestedSteps(), new NamedParametersSteps(),
-                new ParameterDelimitersSteps(), new ExamplesTableParametersSteps(), new ContextSteps(context),
-                new StepsContextSteps());
+        MyContext context = new MyContext();
+        return new InstanceStepsFactory(configuration(),
+                new AndSteps(), new BankAccountSteps(), new BeforeAfterSteps(),
+                new CalendarSteps(), new CompositeSteps(), new CompositeNestedSteps(), new ContextSteps(context), new StepsContextSteps(),
+                new TableMappingSteps(), new IgnoringSteps(), new JsonSteps(),
+                new MetaParametrisationSteps(), new NamedAnnotationsSteps(), new NamedParametersSteps(),
+                new ParameterDelimitersSteps(), new ParametrisationByDelimitedNameSteps(), new ParametrisedSteps(),
+                new PendingSteps(), new PriorityMatchingSteps(),
+                new RestartingSteps(), new SandpitSteps(), new SearchSteps(),
+                new TableSteps(), new TraderSteps(new TradingService())
+        );
     }
 }
