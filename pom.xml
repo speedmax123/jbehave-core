@@ -7,12 +7,12 @@
   </parent>
   <artifactId>jbehave</artifactId>
   <packaging>pom</packaging>
-  <version>4.1.1</version>
+  <version>4.1.2</version>
   <name>JBehave</name>
   <description>JBehave Core is a project providing core functionality supporting and facilitating Behaviour-Driven Development.</description>
 
   <properties>
-    <jdk.version>1.6</jdk.version>
+    <jdk.version>1.7</jdk.version>
   </properties>
 
   <modules>
@@ -301,26 +301,6 @@
                 <goals>
                   <goal>site</goal>
                 </goals>
-                <configuration>
-                  <reportPlugins>
-                    <plugin>
-                      <groupId>org.apache.maven.plugins</groupId>
-                      <artifactId>maven-project-info-reports-plugin</artifactId>
-                      <configuration>
-                        <dependencyDetailsEnabled>false</dependencyDetailsEnabled>
-                        <dependencyLocationsEnabled>false</dependencyLocationsEnabled>
-                      </configuration>
-                    </plugin>
-                    <plugin>
-                      <groupId>org.apache.maven.plugins</groupId>
-                      <artifactId>maven-surefire-report-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                      <groupId>org.codehaus.mojo</groupId>
-                      <artifactId>cobertura-maven-plugin</artifactId>
-                    </plugin>
-                  </reportPlugins>
-                </configuration>
               </execution>
             </executions>
           </plugin>
@@ -358,7 +338,7 @@
     <connection>scm:git:git://github.com/jbehave/jbehave-core.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/jbehave/jbehave-core.git</developerConnection>
     <url>http://github.com/jbehave/jbehave-core</url>
-    <tag>jbehave-4.1.1</tag>
+    <tag>jbehave-4.1.2</tag>
   </scm>
 
 </project>
