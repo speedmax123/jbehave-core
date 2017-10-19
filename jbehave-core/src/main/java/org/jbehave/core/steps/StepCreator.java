@@ -615,15 +615,16 @@ public class StepCreator {
                     meta);
             Timer timer = new Timer().start();
             try {
+                logger().clearMessages();
                 Object outputObject = methodInvoker.invoke();
                 storeOutput(outputObject, method);
-                return silent(method).setTimings(timer.stop());
+                return silent(method).setTimings(timer.stop()).setMessages(logger().getPendingMessages());
             } catch (InvocationTargetException e) {
                 return failed(method, new UUIDExceptionWrapper(new BeforeOrAfterFailed(method, e.getCause())))
-                        .setTimings(timer.stop());
+                        .setTimings(timer.stop()).setMessages(logger().getPendingMessages());
             } catch (Throwable t) {
                 return failed(method, new UUIDExceptionWrapper(new BeforeOrAfterFailed(method, t)))
-                        .setTimings(timer.stop());
+                        .setTimings(timer.stop()).setMessages(logger().getPendingMessages());
             }
         }
 
