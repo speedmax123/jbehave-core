@@ -1,10 +1,6 @@
 package org.jbehave.core.embedder;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -917,6 +913,27 @@ public class PerformableTree {
         protected final PerformableSteps steps = new PerformableSteps();
         protected final PerformableSteps afterSteps = new PerformableSteps();
         private Meta storyAndScenarioMeta = new Meta();
+        // retry times placeHolder
+        protected ThreadLocal<Integer> retryPlaceHolder = ThreadLocal.withInitial(() -> 0);
+        // get current retry time
+        protected Integer howManyRetry() {
+            return this.retryPlaceHolder.get();
+        }
+        // retry once
+        protected void retryOnceMore() {
+            final int howManyRetry = this.howManyRetry();
+            this.retryPlaceHolder.set(howManyRetry + 1);
+        }
+        protected Boolean needMoreRetry() {
+            String retryMetaVal = this.storyAndScenarioMeta.getProperty("retry");
+            int retry = 65536;
+            if(null != retryMetaVal) retry = Integer.valueOf(retryMetaVal);
+            return retry > this.howManyRetry();
+        }
+
+        protected void retryPlaceHolderReset() {
+            this.retryPlaceHolder.set(0);
+        }
 
         public AbstractPerformableScenario() {
             this(new HashMap<String, String>());
@@ -955,9 +972,40 @@ public class PerformableTree {
 				    steps.perform(context);
 				} catch (RestartingScenarioFailure e) {
 				    restart = true;
-				    continue;
 				}
 			}
+			// story is failed!
+			while (needMoreRetry() && null != context.state.getFailure()) {
+			    context.resetState();
+			    context.pendingStories.clear();
+			    try {
+                    steps.perform(context);
+                    // break out of retry loop when scenario is not failed
+                    if(null != context.state.getFailure()) {
+                        int retryTime = howManyRetry();
+                        Meta metaOld = this.getStoryAndScenarioMeta();
+                        Properties withActualRetryTimeProp = new Properties();
+                        withActualRetryTimeProp.put("retryTime", retryTime + 1);
+
+                        System.err.println(Thread.currentThread().getName() + "\twithActualRetryTimeProp ==> " + withActualRetryTimeProp.toString());
+
+                        this.storyAndScenarioMeta.getPropertyNames().stream().filter(name -> !name.equals("retryTime")).forEach(name -> withActualRetryTimeProp.put(name, this.storyAndScenarioMeta.getProperty(name)));
+
+                        System.err.println(Thread.currentThread().getName() + "\twithActualRetryTimeProp extended ==>" + withActualRetryTimeProp.toString());
+
+                        this.storyAndScenarioMeta = new Meta(withActualRetryTimeProp);
+
+                        System.err.println(Thread.currentThread().getName() + "\tstoryAndScenarioMeta =====> " + this.storyAndScenarioMeta);
+
+                        throw new Exception();
+                    }
+                } catch (Throwable e) {
+			        // mark retried
+                    retryOnceMore();
+                }
+            }
+            // reset retry placeholder back to default;
+            this.retryPlaceHolderReset();
 		}
 
 		public Meta getStoryAndScenarioMeta() {
@@ -991,7 +1039,15 @@ public class PerformableTree {
 				}
 				context.givenStory = parentGivenStory;
 			}
-			performRestartableSteps(context);	        
+			performRestartableSteps(context);
+
+			// String title, Meta meta, GivenStories givenStories, ExamplesTable examplesTable, List<String> steps
+			this.scenario = new Scenario(this.scenario.getTitle(),
+                    this.getStoryAndScenarioMeta(),
+                    this.scenario.getGivenStories(),
+                    this.scenario.getExamplesTable(),
+                    this.scenario.getSteps());
+
             afterSteps.perform(context);
         }
 
@@ -1026,7 +1082,7 @@ public class PerformableTree {
 				}
 				context.givenStory = parentGivenStory;
 			}
-			performRestartableSteps(context);	        
+			performRestartableSteps(context);
             afterSteps.perform(context);
         }
 
