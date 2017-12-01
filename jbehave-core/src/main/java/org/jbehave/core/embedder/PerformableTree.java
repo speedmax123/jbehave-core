@@ -993,6 +993,7 @@ public class PerformableTree {
         private void resetRunContext(RunContext runContext) {
             runContext.resetState();
             runContext.pendingStories.clear();
+            runContext.stepsContext.resetKeyStored();
         }
 
         public AbstractPerformableScenario() {

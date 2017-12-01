@@ -111,6 +111,10 @@ public class StepsContext {
         keysStored.set(new HashSet<String>());
     }
 
+    public void resetKeyStored() {
+        keysStored.set(new HashSet<String>());
+    }
+
     @SuppressWarnings("serial")
 	public static class ObjectNotStoredException extends RuntimeException {
 
