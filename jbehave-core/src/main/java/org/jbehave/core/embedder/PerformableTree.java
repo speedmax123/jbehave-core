@@ -981,21 +981,21 @@ public class PerformableTree {
         protected void retryPlaceHolderReset() {
             this.retryPlaceHolder.set(0);
         }
-        /**
-         *
-         * step level retry using annotation @retry in story files   ---- end
-         *
-         */
+        // is scenario is failed?
         private boolean isFailed(RunContext context) {
             return null != context.state.getFailure();
         }
-
+        // reset run context
         private void resetRunContext(RunContext runContext) {
             runContext.resetState();
             runContext.pendingStories.clear();
             runContext.stepsContext.resetKeyStored();
         }
-
+        /**
+         *
+         * step level retry using annotation @retry in story files   ---- end
+         *
+         */
         public AbstractPerformableScenario() {
             this(new HashMap<String, String>());
         }
