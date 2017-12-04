@@ -930,7 +930,7 @@ public class PerformableTree {
         }
         // still can retry ?
         private Boolean stillCanRetry() {
-            String defaultRetry = System.getProperty("jbehave.retry");
+            String defaultRetry = System.getProperty("horizon.retry");
             int retry = 0;
             if(null != defaultRetry) {
                 try {
