@@ -953,6 +953,8 @@ public class PerformableTree {
             while (isFailed(context) && stillCanRetry()) {
                 resetRunContext(context);
                 try {
+                    // rerun steps which is annotated by @BeforeScenario quietly
+                    this.beforeSteps.perform(context);
                     steps.perform(context);
                     // break out of retry loop when scenario is not failed
                     if(isFailed(context)) {
@@ -974,6 +976,13 @@ public class PerformableTree {
                 } catch (Throwable e) {
                     // mark retried
                     retryOnceMore();
+                } finally {
+                    // rerun steps which is annotated by @AfterScenario quietly
+                    try {
+                        this.afterSteps.perform(context);
+                    } catch (InterruptedException e) {
+                        // quietly
+                    }
                 }
             }
             this.retryPlaceHolderReset();                       // reset retry placeholder back to default;
