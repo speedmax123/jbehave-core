@@ -928,8 +928,8 @@ public class PerformableTree {
         private void retryOnceMore() {
             this.retryPlaceHolder.set(this.howManyRetryAlready() + 1);
         }
-        // still can retry ?
-        private Boolean stillCanRetry() {
+        // get real retry time
+        private int getRealRetryTime() {
             String defaultRetry = System.getProperty("horizon.retry");
             int retry = 0;
             if(null != defaultRetry) {
@@ -944,10 +944,20 @@ public class PerformableTree {
                 try {
                     retry = Integer.valueOf(retryMetaVal);
                 } catch (Exception e) {
+                    // quietly
                 }
             }
-            return retry > this.howManyRetryAlready();
+            return retry;
         }
+        // still can retry ?
+        private Boolean stillCanRetry() {
+            return this.getRealRetryTime() > this.howManyRetryAlready();
+        }
+        // last time retry ?
+        private boolean lastTimeRetry() {
+            return this.getRealRetryTime() == this.howManyRetryAlready();
+        }
+
         protected void retry (RunContext context) {
             // story is failed!
             while (isFailed(context) && stillCanRetry()) {
@@ -956,19 +966,18 @@ public class PerformableTree {
                     // rerun steps which is annotated by @BeforeScenario quietly
                     this.beforeSteps.perform(context);
                     steps.perform(context);
+                    int retryTime = howManyRetryAlready();
+                    Properties withActualRetryTimeProp = new Properties();
+                    withActualRetryTimeProp.put("retryTime", String.valueOf(retryTime + 1));
+                    this.storyAndScenarioMeta
+                        .getPropertyNames()
+                        .stream()
+                        .filter(name -> !name.equals("retryTime"))
+                        .forEach(name -> withActualRetryTimeProp.put(name, this.storyAndScenarioMeta.getProperty(name)));
+                    this.storyAndScenarioMeta = new Meta(withActualRetryTimeProp);
+
                     // break out of retry loop when scenario is not failed
                     if(isFailed(context)) {
-                        int retryTime = howManyRetryAlready();
-                        Properties withActualRetryTimeProp = new Properties();
-                        withActualRetryTimeProp.put("retryTime", String.valueOf(retryTime + 1));
-                        this
-                           .storyAndScenarioMeta
-                           .getPropertyNames()
-                           .stream()
-                           .filter(name -> !name.equals("retryTime"))
-                           .forEach(name -> withActualRetryTimeProp
-                                   .put(name, this.storyAndScenarioMeta.getProperty(name)));
-                        this.storyAndScenarioMeta = new Meta(withActualRetryTimeProp);
                         throw new Exception();
                     } else {
                         break;
@@ -978,8 +987,11 @@ public class PerformableTree {
                     retryOnceMore();
                 } finally {
                     // rerun steps which is annotated by @AfterScenario quietly
+                    // except for the last time retry or not failed
                     try {
-                        this.afterSteps.perform(context);
+                        if(!this.lastTimeRetry() && isFailed(context)) {
+                            this.afterSteps.perform(context);
+                        }
                     } catch (InterruptedException e) {
                         // quietly
                     }
@@ -1046,7 +1058,15 @@ public class PerformableTree {
 				    restart = true;
 				}
 			}
-			//retry
+			// be careful, this aftersteps are invoked cause retry need methods
+            // which are annotated by @AfterScenario to run before retry
+            // then when the final time of retry finished,
+            // methods which are annotated by @AfterScenario will be ran outside this function
+            // @see NormalPerformableScenario
+            // @see ExamplePerformableScenario
+            // rather than inv
+            this.afterSteps.perform(context);
+            // retry
             this.retry(context);
 		}
 
