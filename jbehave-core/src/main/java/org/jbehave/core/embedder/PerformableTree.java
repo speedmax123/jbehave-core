@@ -981,12 +981,12 @@ public class PerformableTree {
          *
          * 2. suppose we have config more than 1 retry, like 3, and it will be retried 3 times and no pass
          *
-         *    [beforeSteps] ==> [user Steps] =(failed)=> [afterSteps] ==> [beforeSteps]
+         *    [beforeSteps] ==> [user Steps] =(failed)=> [afterSteps] ==> into retryLoop[3]
          *
-         *                                                            ==> into retryLoop[3] ---
+         *                                                            ==> [beforeSteps]--------
          *                                                                                     |
          *                                                                                     |
-         *                   ---  [afterSteps] <=(failed)= [userSteps] <-----------------------  retry loop1
+         *                   ---  [afterSteps] <=(failed)= [userSteps]     <-------------------   retry loop1
          *                  |
          *                  |
          *                   ---> [beforeSteps] ==> [userSteps] =(failed)=> [afterSteps]   ----  retry loop2
@@ -1003,9 +1003,9 @@ public class PerformableTree {
          *
          * 3. suppose we have config more than 1 retry, like 3, and it will be retried 2 times and pass
          *
-         *    [beforeSteps] ==> [user Steps] =(failed)=> [afterSteps] ==> [beforeSteps]
+         *    [beforeSteps] ==> [user Steps] =(failed)=> [afterSteps] ==> into retryLoop[3]
          *
-         *                                                            ==> into retryLoop[3] ---
+         *                                                            ==> [beforeSteps] -------
          *                                                                                     |
          *                                                                                     |
          *                   ---  [afterSteps] <=(failed)= [userSteps] <-----------------------  retry loop1
