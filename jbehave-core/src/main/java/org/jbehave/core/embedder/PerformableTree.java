@@ -958,22 +958,114 @@ public class PerformableTree {
             return this.getRealRetryTime() == this.howManyRetryAlready();
         }
 
-        protected void retry (RunContext context) {
+        /**
+         *
+         * be careful, this afterSteps are invoked cause retry need methods
+         * which are annotated by @AfterScenario to run before retry
+         *
+         * 1. when no retry is setup [as this.stillCanRetry() is false] or even case is not failed,
+         *    methods which are annotated by @AfterScenario will not be performed in this
+         *    function and it wll be performed outside this function
+         *
+         * 2. this can never run inside retry loop
+         *
+         * these are in order to make results consistent
+         *
+         * flow:
+         *
+         * 1. suppose we have no retry config
+         *
+         *    [beforeSteps] ==> [user Steps] =(failed)=> this.retry()[no retry pre config, nothing happens] ==> [afterSteps]
+         *
+         *
+         *
+         * 2. suppose we have config more than 1 retry, like 3, and it will be retried 3 times and no pass
+         *
+         *    [beforeSteps] ==> [user Steps] =(failed)=> [afterSteps] ==> [beforeSteps]
+         *
+         *                                                            ==> into retryLoop[3] ---
+         *                                                                                     |
+         *                                                                                     |
+         *                   ---  [afterSteps] <=(failed)= [userSteps] <-----------------------  retry loop1
+         *                  |
+         *                  |
+         *                   ---> [beforeSteps] ==> [userSteps] =(failed)=> [afterSteps]   ----  retry loop2
+         *                                                                                     |
+         *                                                                                     |
+         *                   ---------------    <=(failed)= [userSteps] <== [beforeSteps]  <---  retry loop3
+         *                  |
+         *                  |
+         *                   ---> out of retryLoop[3]
+         *
+         *    ==> [afterSteps]
+         *
+         *
+         *
+         * 3. suppose we have config more than 1 retry, like 3, and it will be retried 2 times and pass
+         *
+         *    [beforeSteps] ==> [user Steps] =(failed)=> [afterSteps] ==> [beforeSteps]
+         *
+         *                                                            ==> into retryLoop[3] ---
+         *                                                                                     |
+         *                                                                                     |
+         *                   ---  [afterSteps] <=(failed)= [userSteps] <-----------------------  retry loop1
+         *                  |
+         *                  |
+         *                   ---> [beforeSteps] ==> [userSteps] =(pass)=>    ------------------  retry loop2
+         *                                                                                     |
+         *                                                                                     |
+         *                                                out of retryLoop[3]  <---------------
+         *    ==> [afterSteps]
+         *
+         *
+         *
+         * 4. suppose we have passed steps run and we do not have retry
+         *
+         *    [beforeSteps] ==> [user Steps] =(pass)=> this.retry()[nothing happens] ==> [afterSteps]
+         *
+         *
+         *
+         * @see NormalPerformableScenario
+         * @see ExamplePerformableScenario
+         * @param context RunContext
+         * @throws InterruptedException this.afterSteps.perform will throw it
+         */
+        protected void retry (RunContext context) throws InterruptedException {
+
+            // see comment 1
+            if(this.isFailed(context) && this.stillCanRetry()) {
+                this.afterSteps.perform(context);
+            }
+
+            // enter retry loop
+            this.retryLoop(context);
+
+            // reset retry placeholder back to default;
+            this.retryPlaceHolderReset();
+        }
+
+        // this is retry Loop
+        protected void retryLoop(RunContext context) {
             // story is failed!
-            while (isFailed(context) && stillCanRetry()) {
+            // starting retry loop
+            while (this.isFailed(context) && this.stillCanRetry()) {
                 resetRunContext(context);
                 try {
                     // rerun steps which is annotated by @BeforeScenario quietly
                     this.beforeSteps.perform(context);
-                    steps.perform(context);
-                    int retryTime = howManyRetryAlready();
+                    this.steps.perform(context);
+                    int retryTime = this.howManyRetryAlready();
                     Properties withActualRetryTimeProp = new Properties();
                     withActualRetryTimeProp.put("retryTime", String.valueOf(retryTime + 1));
-                    this.storyAndScenarioMeta
-                        .getPropertyNames()
-                        .stream()
-                        .filter(name -> !name.equals("retryTime"))
-                        .forEach(name -> withActualRetryTimeProp.put(name, this.storyAndScenarioMeta.getProperty(name)));
+                    this
+                            .storyAndScenarioMeta
+                            .getPropertyNames()
+                            .stream()
+                            .filter(name -> !name.equals("retryTime"))
+                            .forEach(name -> withActualRetryTimeProp
+                                    .put(name, this.storyAndScenarioMeta
+                                            .getProperty(name)));
+
                     this.storyAndScenarioMeta = new Meta(withActualRetryTimeProp);
 
                     // break out of retry loop when scenario is not failed
@@ -984,7 +1076,7 @@ public class PerformableTree {
                     }
                 } catch (Throwable e) {
                     // mark retried
-                    retryOnceMore();
+                    this.retryOnceMore();
                 } finally {
                     // rerun steps which is annotated by @AfterScenario quietly
                     // except for the last time retry or not failed
@@ -997,8 +1089,8 @@ public class PerformableTree {
                     }
                 }
             }
-            this.retryPlaceHolderReset();                       // reset retry placeholder back to default;
         }
+        // reset retry place holder threadLocal value
         protected void retryPlaceHolderReset() {
             this.retryPlaceHolder.set(0);
         }
@@ -1058,15 +1150,7 @@ public class PerformableTree {
 				    restart = true;
 				}
 			}
-			// be careful, this aftersteps are invoked cause retry need methods
-            // which are annotated by @AfterScenario to run before retry
-            // then when the final time of retry finished,
-            // methods which are annotated by @AfterScenario will be ran outside this function
-            // @see NormalPerformableScenario
-            // @see ExamplePerformableScenario
-            // rather than inv
-            this.afterSteps.perform(context);
-            // retry
+            // retry entry point
             this.retry(context);
 		}
 
