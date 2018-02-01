@@ -918,6 +918,8 @@ public class PerformableTree {
          * step level retry using annotation @retry in story files  --- begin
          *
          */
+        // retryTime
+        private final static String retryTimeName = "retryTime";
         // retry times placeHolder
         private ThreadLocal<Integer> retryPlaceHolder = ThreadLocal.withInitial(() -> 0);
         // get current retry time
@@ -1056,12 +1058,12 @@ public class PerformableTree {
                     this.steps.perform(context);
                     int retryTime = this.howManyRetryAlready();
                     Properties withActualRetryTimeProp = new Properties();
-                    withActualRetryTimeProp.put("retryTime", String.valueOf(retryTime + 1));
+                    withActualRetryTimeProp.put(retryTimeName, String.valueOf(retryTime + 1));
                     this
                             .storyAndScenarioMeta
                             .getPropertyNames()
                             .stream()
-                            .filter(name -> !name.equals("retryTime"))
+                            .filter(name -> !name.equals(retryTimeName))
                             .forEach(name -> withActualRetryTimeProp
                                     .put(name, this.storyAndScenarioMeta
                                             .getProperty(name)));
